@@ -1,0 +1,116 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ../auth-service
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3001:3000"
+    volumes:
+      - ../auth-service:/app
+    environment:
+      DB_HOST: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_PORT: "5432"
+      JWT_SECRET_KEY: change_me_in_production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "rm -f tmp/pids/server.pid && bin/rails db:create db:migrate && bin/rails server -b 0.0.0.0 -p 3000"
+
+  notification-service:
+    build:
+      context: ../notification-service
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3002:3000"
+    volumes:
+      - ../notification-service:/app
+    environment:
+      DB_HOST: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "rm -f tmp/pids/server.pid && bin/rails db:create db:migrate && bin/rails server -b 0.0.0.0 -p 3000"
+
+  webscraping-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    environment:
+      DB_HOST: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      AUTH_SERVICE_URL: http://auth-service:3000
+      NOTIFICATION_SERVICE_URL: http://notification-service:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    command: sh -c "rm -f tmp/pids/server.pid && bin/rails db:create db:migrate && bin/rails server -b 0.0.0.0 -p 3000"
+
+  webscraping-sidekiq:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+    environment:
+      DB_HOST: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      NOTIFICATION_SERVICE_URL: http://notification-service:3000
+      SELENIUM_URL: http://selenium:4444
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      webscraping-manager:
+        condition: service_started
+    command: bundle exec sidekiq
+
+volumes:
+  postgres_data:

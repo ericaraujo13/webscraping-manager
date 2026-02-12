@@ -1,0 +1,49 @@
+<div class="min-h-[70vh] flex items-center justify-center">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-900">Criar conta</h1>
+      <p class="mt-2 text-gray-600">Preencha seus dados para se registrar</p>
+    </div>
+
+    <div class="bg-white shadow-sm rounded-lg p-8">
+      <% if @errors.any? %>
+        <div class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+            <% @errors.each do |err| %>
+              <li><%= err %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <%= form_with url: register_path, method: :post, local: true do |f| %>
+        <div class="space-y-5">
+          <div>
+            <%= f.label :name, "Nome", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.text_field :name, value: @user[:name], class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm px-4 py-2.5 border" %>
+          </div>
+
+          <div>
+            <%= f.label :email, "E-mail", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.email_field :email, value: @user[:email], required: true, class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm px-4 py-2.5 border" %>
+          </div>
+
+          <div>
+            <%= f.label :password, "Senha (mínimo 6 caracteres)", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.password_field :password, required: true, class: "mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm px-4 py-2.5 border" %>
+          </div>
+
+          <div class="pt-2">
+            <%= f.submit "Criar conta", class: "w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer" %>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600">
+          Já tem conta? <%= link_to "Fazer login", login_path, class: "text-indigo-600 hover:text-indigo-800 font-medium" %>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
